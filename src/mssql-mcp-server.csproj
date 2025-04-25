@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,6 +6,17 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    
+    <!-- Global tool properties -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>mssql-mcp-server</ToolCommandName>
+    <PackageId>mssql-mcp-server</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Jakob Popple</Authors>
+    <Description>SQL Server MCP Server - Provides SQL Server database access via Model Context Protocol</Description>
+    <PackageTags>sql;mcp;database;tool</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Popplywop/mssql-mcp-server</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
