@@ -1,0 +1,233 @@
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using SqlServerMcpServer.Models;
+
+namespace SqlServerMcpServer.Services
+{
+    public class QueryService
+    {
+        private readonly SqlConnectionFactory _connectionFactory;
+        private readonly ILogger<QueryService> _logger;
+        private readonly int _defaultCommandTimeout;
+        private readonly int _defaultMaxRows;
+
+        public QueryService(
+            SqlConnectionFactory connectionFactory,
+            ILogger<QueryService> logger,
+            IConfiguration configuration)
+        {
+            _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            // Get configuration values with defaults
+            _defaultCommandTimeout = configuration.GetValue<int>("Database:DefaultCommandTimeout", 30);
+            _defaultMaxRows = configuration.GetValue<int>("Database:DefaultMaxRows", 1000);
+        }
+
+        /// <summary>
+        /// Executes a SQL query with pagination and configurable timeout
+        /// </summary>
+        /// <param name="query">The SQL query to execute</param>
+        /// <param name="commandTimeout">Optional command timeout in seconds</param>
+        /// <param name="maxRows">Optional maximum number of rows to return</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Query result</returns>
+        public async Task<QueryResult> ExecuteQueryAsync(
+            string query,
+            int? commandTimeout = null,
+            int? maxRows = null,
+            CancellationToken cancellationToken = default)
+        {
+            // Use default values if not specified
+            int timeout = commandTimeout ?? _defaultCommandTimeout;
+            int rowLimit = maxRows ?? _defaultMaxRows;
+            
+            _logger.LogDebug("Executing query with timeout {Timeout}s and max rows {MaxRows}", timeout, rowLimit);
+            
+            using var connection = _connectionFactory.CreateConnection(timeout);
+            
+            try
+            {
+                await connection.OpenAsync(cancellationToken);
+                
+                using var command = new SqlCommand(query, connection);
+                command.CommandTimeout = timeout;
+
+                // For SELECT queries
+                if (query.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
+                {
+                    using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                    return await ReadQueryResultAsync(reader, rowLimit, cancellationToken);
+                }
+                // For INSERT, UPDATE, DELETE queries
+                else
+                {
+                    int rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
+                    return new QueryResult
+                    {
+                        RowsAffected = rowsAffected,
+                        IsSuccess = true,
+                        Message = $"{rowsAffected} row(s) affected."
+                    };
+                }
+            }
+            catch (SqlException ex)
+            {
+                _logger.LogError(ex, "SQL error executing query: {Message}", ex.Message);
+                return new QueryResult
+                {
+                    IsSuccess = false,
+                    Message = $"SQL Error: {ex.Message}",
+                    ErrorCode = ex.Number
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error executing query: {Message}", ex.Message);
+                return new QueryResult
+                {
+                    IsSuccess = false,
+                    Message = ex.Message
+                };
+            }
+        }
+        
+        /// <summary>
+        /// Executes a SQL query within a transaction
+        /// </summary>
+        /// <param name="queries">List of SQL queries to execute in transaction</param>
+        /// <param name="commandTimeout">Optional command timeout in seconds</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Query result</returns>
+        public async Task<QueryResult> ExecuteTransactionAsync(
+            IEnumerable<string> queries,
+            int? commandTimeout = null,
+            CancellationToken cancellationToken = default)
+        {
+            int timeout = commandTimeout ?? _defaultCommandTimeout;
+            
+            using var connection = _connectionFactory.CreateConnection(timeout);
+            
+            try
+            {
+                await connection.OpenAsync(cancellationToken);
+                
+                // Start a transaction
+                using var transaction = connection.BeginTransaction();
+                
+                try
+                {
+                    int totalRowsAffected = 0;
+                    
+                    foreach (var query in queries)
+                    {
+                        using var command = new SqlCommand(query, connection, transaction);
+                        command.CommandTimeout = timeout;
+                        
+                        int rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
+                        totalRowsAffected += rowsAffected;
+                    }
+                    
+                    // Commit the transaction
+                    transaction.Commit();
+                    
+                    return new QueryResult
+                    {
+                        RowsAffected = totalRowsAffected,
+                        IsSuccess = true,
+                        Message = $"Transaction completed successfully. {totalRowsAffected} row(s) affected."
+                    };
+                }
+                catch (Exception ex)
+                {
+                    // Rollback the transaction on error
+                    _logger.LogError(ex, "Error in transaction, rolling back: {Message}", ex.Message);
+                    transaction.Rollback();
+                    throw;
+                }
+            }
+            catch (SqlException ex)
+            {
+                _logger.LogError(ex, "SQL error in transaction: {Message}", ex.Message);
+                return new QueryResult
+                {
+                    IsSuccess = false,
+                    Message = $"Transaction failed: {ex.Message}",
+                    ErrorCode = ex.Number
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in transaction: {Message}", ex.Message);
+                return new QueryResult
+                {
+                    IsSuccess = false,
+                    Message = $"Transaction failed: {ex.Message}"
+                };
+            }
+        }
+
+        private async Task<QueryResult> ReadQueryResultAsync(
+            SqlDataReader reader,
+            int maxRows,
+            CancellationToken cancellationToken)
+        {
+            var result = new QueryResult
+            {
+                Columns = [],
+                Rows = [],
+                IsSuccess = true
+            };
+
+            try
+            {
+                // Get column names
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    result.Columns.Add(reader.GetName(i));
+                }
+
+                // Read rows with pagination
+                int rowCount = 0;
+                bool hasMoreRows = false;
+                
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    if (rowCount >= maxRows)
+                    {
+                        hasMoreRows = true;
+                        break;
+                    }
+                    
+                    var row = new Dictionary<string, object>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var columnName = reader.GetName(i);
+                        // Use DBNull.Value instead of null to avoid nullable reference warning
+                        var value = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+                        row[columnName] = value;
+                    }
+                    result.Rows.Add(row);
+                    rowCount++;
+                }
+
+                result.RowCount = result.Rows.Count;
+                result.HasMoreRows = hasMoreRows;
+                
+                if (hasMoreRows)
+                {
+                    result.Message = $"Query returned {result.RowCount} rows (limited from a larger result set). Use pagination parameters to see more results.";
+                    _logger.LogInformation("Query result was limited to {MaxRows} rows", maxRows);
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading query results: {Message}", ex.Message);
+                throw;
+            }
+        }
+    }
+}
