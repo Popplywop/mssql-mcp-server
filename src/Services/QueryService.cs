@@ -9,16 +9,19 @@ namespace SqlServerMcpServer.Services
     {
         private readonly SqlConnectionFactory _connectionFactory;
         private readonly ILogger<QueryService> _logger;
+        private readonly SqlInjectionValidationService _sqlInjectionValidator;
         private readonly int _defaultCommandTimeout;
         private readonly int _defaultMaxRows;
 
         public QueryService(
             SqlConnectionFactory connectionFactory,
             ILogger<QueryService> logger,
+            SqlInjectionValidationService sqlInjectionValidator,
             IConfiguration configuration)
         {
             _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _sqlInjectionValidator = sqlInjectionValidator ?? throw new ArgumentNullException(nameof(sqlInjectionValidator));
             
             // Get configuration values with defaults
             _defaultCommandTimeout = configuration.GetValue<int>("Database:DefaultCommandTimeout", 30);
@@ -44,6 +47,18 @@ namespace SqlServerMcpServer.Services
             int rowLimit = maxRows ?? _defaultMaxRows;
             
             _logger.LogDebug("Executing query with timeout {Timeout}s and max rows {MaxRows}", timeout, rowLimit);
+            
+            // Validate the query for SQL injection
+            var (isValid, errorMessage) = _sqlInjectionValidator.ValidateQuery(query);
+            if (!isValid)
+            {
+                _logger.LogWarning("SQL injection validation failed: {ErrorMessage}", errorMessage);
+                return new QueryResult
+                {
+                    IsSuccess = false,
+                    Message = $"Security validation failed: {errorMessage}"
+                };
+            }
             
             using var connection = _connectionFactory.CreateConnection(timeout);
             
@@ -93,81 +108,6 @@ namespace SqlServerMcpServer.Services
             }
         }
         
-        /// <summary>
-        /// Executes a SQL query within a transaction
-        /// </summary>
-        /// <param name="queries">List of SQL queries to execute in transaction</param>
-        /// <param name="commandTimeout">Optional command timeout in seconds</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Query result</returns>
-        public async Task<QueryResult> ExecuteTransactionAsync(
-            IEnumerable<string> queries,
-            int? commandTimeout = null,
-            CancellationToken cancellationToken = default)
-        {
-            int timeout = commandTimeout ?? _defaultCommandTimeout;
-            
-            using var connection = _connectionFactory.CreateConnection(timeout);
-            
-            try
-            {
-                await connection.OpenAsync(cancellationToken);
-                
-                // Start a transaction
-                using var transaction = connection.BeginTransaction();
-                
-                try
-                {
-                    int totalRowsAffected = 0;
-                    
-                    foreach (var query in queries)
-                    {
-                        using var command = new SqlCommand(query, connection, transaction);
-                        command.CommandTimeout = timeout;
-                        
-                        int rowsAffected = await command.ExecuteNonQueryAsync(cancellationToken);
-                        totalRowsAffected += rowsAffected;
-                    }
-                    
-                    // Commit the transaction
-                    transaction.Commit();
-                    
-                    return new QueryResult
-                    {
-                        RowsAffected = totalRowsAffected,
-                        IsSuccess = true,
-                        Message = $"Transaction completed successfully. {totalRowsAffected} row(s) affected."
-                    };
-                }
-                catch (Exception ex)
-                {
-                    // Rollback the transaction on error
-                    _logger.LogError(ex, "Error in transaction, rolling back: {Message}", ex.Message);
-                    transaction.Rollback();
-                    throw;
-                }
-            }
-            catch (SqlException ex)
-            {
-                _logger.LogError(ex, "SQL error in transaction: {Message}", ex.Message);
-                return new QueryResult
-                {
-                    IsSuccess = false,
-                    Message = $"Transaction failed: {ex.Message}",
-                    ErrorCode = ex.Number
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in transaction: {Message}", ex.Message);
-                return new QueryResult
-                {
-                    IsSuccess = false,
-                    Message = $"Transaction failed: {ex.Message}"
-                };
-            }
-        }
-
         private async Task<QueryResult> ReadQueryResultAsync(
             SqlDataReader reader,
             int maxRows,

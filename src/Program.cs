@@ -86,6 +86,8 @@ namespace SqlServerMcpServer
                         .AddSingleton<SqlConnectionService>()
                         // Register SqlConnectionFactory which depends on SqlConnectionService
                         .AddSingleton<SqlConnectionFactory>()
+                        // Register SQL injection validation service
+                        .AddSingleton<SqlInjectionValidationService>()
                         // Register services that depend on SqlConnectionFactory
                         .AddSingleton<QueryService>()
                         .AddSingleton<NoOpResourceHandler>();
