@@ -1,12 +1,11 @@
 # SQL Server MCP Server
 
-A Model Context Protocol (MCP) server that provides tools for interacting with SQL Server databases. This server allows Large Language Models (LLMs) to query and manipulate SQL Server databases through a standardized protocol.
+A Model Context Protocol (MCP) server that provides tools for interacting with SQL Server databases. This server allows Large Language Models (LLMs) to query and inspect SQL Server databases through a standardized protocol.
 
 ## Features
 
 - **Database Querying**: Execute SQL queries and retrieve results
 - **Schema Inspection**: List tables, views, stored procedures, and examine table schemas
-- **Transaction Support**: Execute multiple SQL queries in a transaction
 
 ## Getting Started
 
@@ -48,16 +47,6 @@ dotnet run --env-var "SQL_CONNECTION_STRING"
     - `commandTimeout`: Optional command timeout in seconds
     - `maxRows`: Optional maximum number of rows to return
 
-- **ExecuteScalarQuery**: Executes a SQL query and returns only the first value
-  - Parameters:
-    - `query`: The SQL query to execute
-    - `commandTimeout`: Optional command timeout in seconds
-
-- **ExecuteTransaction**: Executes multiple SQL queries in a transaction
-  - Parameters:
-    - `queriesJson`: List of SQL queries to execute in a transaction (JSON array)
-    - `commandTimeout`: Optional command timeout in seconds
-
 ### Schema Tools
 
 - **ListTables**: Lists all tables in the database
@@ -84,21 +73,9 @@ dotnet run --env-var "SQL_CONNECTION_STRING"
 ### Querying Data
 
 ```
-ExecuteQuery: 
+ExecuteQuery:
   query: "SELECT TOP 10 * FROM Customers WHERE Region = 'WA'"
   maxRows: 100
-```
-
-### Executing a Transaction
-
-```
-ExecuteTransaction:
-  queriesJson: [
-    "BEGIN TRANSACTION",
-    "INSERT INTO Customers (CustomerID, CompanyName) VALUES ('DEMO1', 'Demo Company')",
-    "UPDATE Orders SET ShipName = 'Demo Company' WHERE CustomerID = 'DEMO1'",
-    "COMMIT"
-  ]
 ```
 
 ## License
