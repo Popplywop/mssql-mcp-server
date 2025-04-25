@@ -11,13 +11,13 @@ namespace SqlServerMcpServer.Services
         [GeneratedRegex(@";\s*\w", RegexOptions.IgnoreCase)]
         private static partial Regex MultipleStatementsPattern();
         
-        [GeneratedRegex(@"--|\/*")]
+        [GeneratedRegex(@"--|\/\*")]
         private static partial Regex CommentPattern();
         
         [GeneratedRegex(@"\bunion\s+all\s+select\b|\bunion\s+select\b", RegexOptions.IgnoreCase)]
         private static partial Regex UnionPattern();
         
-        [GeneratedRegex(@"\b(drop|delete|truncate|alter|create|update|insert)\b\s+\b(table|database|view|procedure|trigger|index|function)\b", RegexOptions.IgnoreCase)]
+        [GeneratedRegex(@"\b(drop|truncate|alter|create)\b\s+\b(table|database|view|procedure|trigger|index|function)\b|\bdelete\s+from\s+\w+\s*$", RegexOptions.IgnoreCase)]
         private static partial Regex DangerousKeywordsPattern();
         
         [GeneratedRegex(@"\bxp_cmdshell\b", RegexOptions.IgnoreCase)]
@@ -32,7 +32,7 @@ namespace SqlServerMcpServer.Services
         [GeneratedRegex(@"\bexec\s*\(|execute\s*\(", RegexOptions.IgnoreCase)]
         private static partial Regex BatchExecutionPattern();
         
-        [GeneratedRegex(@"['""]\s*\+\s*['""]\s*\+|['""]\s*\|\|\s*['""]\s*\|")]
+        [GeneratedRegex(@"['""]\s*\+\s*['""]\s*|['""]\s*\|\|\s*['""]\s*", RegexOptions.IgnoreCase)]
         private static partial Regex SqlInjectionCharsPattern();
         
         public SqlInjectionValidationService(ILogger<SqlInjectionValidationService> logger)
