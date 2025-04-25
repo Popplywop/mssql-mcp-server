@@ -6,7 +6,7 @@ A Model Context Protocol (MCP) server that provides tools for interacting with S
 
 - **Database Querying**: Execute SQL queries and retrieve results
 - **Schema Inspection**: List tables, views, stored procedures, and examine table schemas
-- **Data Manipulation**: Insert, update, delete, and truncate data
+- **Transaction Support**: Execute multiple SQL queries in a transaction
 
 ## Getting Started
 
@@ -15,51 +15,68 @@ A Model Context Protocol (MCP) server that provides tools for interacting with S
 - .NET 8.0 SDK or later
 - SQL Server instance (local or remote)
 
-### Configuration
+### Installation
 
-Edit the `appsettings.json` file to configure your SQL Server connection:
-
-```json
-{
-  "ConnectionStrings": {
-    "SqlServer": "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
-  }
-}
+```bash
+dotnet build
 ```
 
 ### Running the Server
 
+The server can be run with a direct connection string or by referencing an environment variable:
+
 ```bash
-dotnet run
+# Using a direct connection string
+dotnet run --dsn "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
+
+# Using an environment variable
+dotnet run --env-var "SQL_CONNECTION_STRING"
 ```
+
+## Command Line Options
+
+- `--dsn` or `-d`: SQL Server connection string
+- `--env-var` or `-e`: Environment variable name containing the connection string
 
 ## Available MCP Tools
 
 ### Query Tools
 
-- **ExecuteQuery**: Executes a SQL query and returns the results
+- **ExecuteQuery**: Executes a SQL query against the database and returns the results
+  - Parameters:
+    - `query`: The SQL query to execute
+    - `commandTimeout`: Optional command timeout in seconds
+    - `maxRows`: Optional maximum number of rows to return
+
 - **ExecuteScalarQuery**: Executes a SQL query and returns only the first value
+  - Parameters:
+    - `query`: The SQL query to execute
+    - `commandTimeout`: Optional command timeout in seconds
+
+- **ExecuteTransaction**: Executes multiple SQL queries in a transaction
+  - Parameters:
+    - `queriesJson`: List of SQL queries to execute in a transaction (JSON array)
+    - `commandTimeout`: Optional command timeout in seconds
 
 ### Schema Tools
 
 - **ListTables**: Lists all tables in the database
+
 - **GetTableSchema**: Gets the schema of a specific table
+  - Parameters:
+    - `tableName`: The name of the table
+
 - **ListViews**: Lists all views in the database
+
 - **ListStoredProcedures**: Lists all stored procedures in the database
+
 - **GetDatabaseInfo**: Gets information about the connected database
-
-### Data Manipulation Tools
-
-- **InsertRecord**: Inserts a new record into a table
-- **UpdateRecords**: Updates records in a table based on a condition
-- **DeleteRecords**: Deletes records from a table based on a condition
-- **TruncateTable**: Truncates a table (removes all records)
 
 ## Security Considerations
 
 - Use a SQL Server account with appropriate permissions (principle of least privilege)
 - Store connection strings securely (not in source control)
-- Consider using Azure Key Vault or similar services for production deployments
+- Consider using environment variables for connection strings
 - Enable TLS/SSL for database connections
 
 ## Example Usage
@@ -67,22 +84,25 @@ dotnet run
 ### Querying Data
 
 ```
-ExecuteQuery: "SELECT TOP 10 * FROM Customers WHERE Region = 'WA'"
+ExecuteQuery: 
+  query: "SELECT TOP 10 * FROM Customers WHERE Region = 'WA'"
+  maxRows: 100
 ```
 
-### Inserting Data
+### Executing a Transaction
 
 ```
-InsertRecord: 
-  tableName: "Customers"
-  recordJson: {
-    "CustomerID": "DEMO1",
-    "CompanyName": "Demo Company",
-    "ContactName": "John Doe",
-    "Country": "USA"
-  }
+ExecuteTransaction:
+  queriesJson: [
+    "BEGIN TRANSACTION",
+    "INSERT INTO Customers (CustomerID, CompanyName) VALUES ('DEMO1', 'Demo Company')",
+    "UPDATE Orders SET ShipName = 'Demo Company' WHERE CustomerID = 'DEMO1'",
+    "COMMIT"
+  ]
 ```
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE.md) - see the [LICENSE.md](LICENSE.md) file for details.
+
+The MIT License is a permissive license that allows for reuse with minimal restrictions. It permits anyone to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, subject to the condition that the original copyright notice and permission notice appear in all copies.

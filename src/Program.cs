@@ -20,11 +20,6 @@ namespace SqlServerMcpServer
                 description: "SQL Server connection string (e.g., \"Server=myserver;Database=mydb;User Id=sa;Password=mypassword;TrustServerCertificate=True;\")");
             dsnOption.AddAlias("-d");
             
-            var verboseOption = new Option<bool>(
-                name: "--verbose",
-                description: "Enable verbose logging");
-            verboseOption.AddAlias("-v");
-            
             var envVarOption = new Option<string>(
                 name: "--env-var",
                 description: "Environment variable name containing the connection string");
@@ -32,11 +27,10 @@ namespace SqlServerMcpServer
             
             // Add options to the root command
             rootCommand.AddOption(dsnOption);
-            rootCommand.AddOption(verboseOption);
             rootCommand.AddOption(envVarOption);
 
             // Set the handler for the root command
-            rootCommand.SetHandler(async (dsn, verbose, envVar) =>
+            rootCommand.SetHandler(async (dsn, envVar) =>
             {
                 try
                 {
@@ -73,7 +67,7 @@ namespace SqlServerMcpServer
                     builder.Configuration["ConnectionStrings:SqlServer"] = connectionString;
                     
                     // Configure logging
-                    var logLevel = verbose ? LogLevel.Debug : LogLevel.Information;
+                    var logLevel = LogLevel.Information;
                     builder.Logging.AddConsole(consoleLogOptions =>
                     {
                         // Configure all logs to go to stderr
@@ -142,7 +136,7 @@ namespace SqlServerMcpServer
                     Console.Error.WriteLine($"Unhandled error: {ex.Message}");
                     Environment.Exit(1);
                 }
-            }, dsnOption, verboseOption, envVarOption);
+            }, dsnOption, envVarOption);
             
             // Parse the command line arguments and execute the handler
             return await rootCommand.InvokeAsync(args);
