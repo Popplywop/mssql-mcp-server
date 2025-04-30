@@ -17,6 +17,11 @@ A Model Context Protocol (MCP) server that provides tools for interacting with S
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/Popplywop/mssql-mcp-server 
+cd mssql-mcp-server
+
+# Build the project
 dotnet build
 ```
 
@@ -31,6 +36,27 @@ dotnet run --dsn "Server=your-server;Database=your-database;User Id=your-usernam
 # Using an environment variable
 dotnet run --env-var "SQL_CONNECTION_STRING"
 ```
+
+### MCP Server Configuration
+
+To use this server with Claude or other LLMs that support the Model Context Protocol, you'll need to configure it in your MCP configuration. Here's an example JSON configuration:
+
+```json
+{
+  "servers": [
+    {
+      "name": "SqlServerMcp",
+      "command": "path/to/mssql-mcp-server.exe",
+      "args": [
+        "--dsn",
+        "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
+      ],
+    }
+  ]
+}
+```
+
+Replace the path and connection string with your actual values. This configuration can be used with Claude's MCP integration or other LLM platforms that support the Model Context Protocol.
 
 ## Command Line Options
 
@@ -74,7 +100,7 @@ dotnet run --env-var "SQL_CONNECTION_STRING"
 
 ```
 ExecuteQuery:
-  query: "SELECT TOP 10 * FROM Customers WHERE Region = 'WA'"
+  query: "SELECT TOP 10 * FROM MyTable"
   maxRows: 100
 ```
 
