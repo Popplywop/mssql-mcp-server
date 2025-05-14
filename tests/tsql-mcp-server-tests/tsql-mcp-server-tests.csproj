@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>mssql_mcp_server_tests</RootNamespace>
+    <RootNamespace>tsql_mcp_server_tests</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\mssql-mcp-server.csproj" />
+    <ProjectReference Include="..\..\src\tsql-mcp-server.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,61 @@
+name: CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    # Step 1: Checkout the repository
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Setup .NET environment
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0' # Specify the version of .NET your project uses
+
+    # Step 3: Extract the current version from the .csproj file
+    - name: Get current version
+      id: get_version
+      run: |
+        CURRENT_VERSION=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" *.csproj)
+        echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+    # Step 4: Check if this version is already published on NuGet.org
+    - name: Check if version exists on NuGet
+      id: check_version
+      run: |
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/tsql-mcp-server/$CURRENT_VERSION/tsql-mcp-server.$CURRENT_VERSION.nupkg)
+        echo "VERSION_EXISTS=$RESPONSE" >> $GITHUB_ENV
+      env:
+        CURRENT_VERSION: ${{ env.CURRENT_VERSION }}
+
+    # Step 5: Stop workflow if version already exists
+    - name: Stop if version exists
+      if: ${{ env.VERSION_EXISTS == '200' }}
+      run: echo "Version ${{ env.CURRENT_VERSION }} already exists. Stopping the workflow."
+
+    # Step 6: Restore dependencies
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # Step 7: Build the project
+    - name: Build the project
+      run: dotnet build --configuration Release --no-restore
+
+    # Step 8: Pack the project
+    - name: Pack the project
+      run: dotnet pack --configuration Release --no-build -o ./artifacts
+
+    # Step 9: Publish the package to NuGet.org
+    - name: Publish to NuGet
+      if: ${{ env.VERSION_EXISTS != '200' }}
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+      run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY

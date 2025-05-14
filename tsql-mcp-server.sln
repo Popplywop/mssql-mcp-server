@@ -1,0 +1,35 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tsql-mcp-server", "src\tsql-mcp-server.csproj", "{38A7DFCD-8179-1624-B4EF-378151F299C3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{BE996FFB-2049-4278-BCB1-F7BAD0E80678}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tsql-mcp-server-tests", "tests\tsql-mcp-server-tests\tsql-mcp-server-tests.csproj", "{9008D761-34F9-4F66-B73D-067A04C3D733}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{38A7DFCD-8179-1624-B4EF-378151F299C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38A7DFCD-8179-1624-B4EF-378151F299C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38A7DFCD-8179-1624-B4EF-378151F299C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38A7DFCD-8179-1624-B4EF-378151F299C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9008D761-34F9-4F66-B73D-067A04C3D733}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9008D761-34F9-4F66-B73D-067A04C3D733}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9008D761-34F9-4F66-B73D-067A04C3D733}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9008D761-34F9-4F66-B73D-067A04C3D733}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B821C0D7-7504-42A8-A0F8-4487FED17C4E}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{9008D761-34F9-4F66-B73D-067A04C3D733} = {BE996FFB-2049-4278-BCB1-F7BAD0E80678}
+	EndGlobalSection
+EndGlobal
