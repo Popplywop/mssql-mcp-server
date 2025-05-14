@@ -18,9 +18,25 @@ A Model Context Protocol (MCP) server that provides tools for interacting with S
 
 ### Installation
 
+#### Option 1: Install as a .NET Tool (Recommended)
+
+Install globally as a .NET tool:
+
+```bash
+dotnet tool install --global tsql-mcp-server
+```
+
+To update to the latest version:
+
+```bash
+dotnet tool update --global tsql-mcp-server
+```
+
+#### Option 2: Build from Source
+
 ```bash
 # Clone the repository
-git clone https://github.com/Popplywop/mssql-mcp-server 
+git clone https://github.com/Popplywop/mssql-mcp-server
 cd mssql-mcp-server
 
 # Build the project
@@ -29,7 +45,21 @@ dotnet build
 
 ### Running the Server
 
-The server can be run with a direct connection string or by referencing an environment variable:
+#### Using the .NET Tool
+
+If installed as a .NET global tool:
+
+```bash
+# Using a direct connection string
+tsql-mcp-server --dsn "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
+
+# Using an environment variable
+tsql-mcp-server --env-var "SQL_CONNECTION_STRING"
+```
+
+#### Using Source Code
+
+If building from source:
 
 ```bash
 # Using a direct connection string
@@ -41,7 +71,26 @@ dotnet run --env-var "SQL_CONNECTION_STRING"
 
 ### MCP Server Configuration
 
-To use this server with Claude or other LLMs that support the Model Context Protocol, you'll need to configure it in your MCP configuration. Here's an example JSON configuration:
+To use this server with Claude or other LLMs that support the Model Context Protocol, you'll need to configure it in your MCP configuration file.
+
+#### If Installed as a .NET Tool
+
+```json
+{
+  "servers": [
+    {
+      "name": "SqlServerMcp",
+      "command": "tsql-mcp-server",
+      "args": [
+        "--dsn",
+        "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
+      ]
+    }
+  ]
+}
+```
+
+#### If Built from Source
 
 ```json
 {
@@ -52,13 +101,32 @@ To use this server with Claude or other LLMs that support the Model Context Prot
       "args": [
         "--dsn",
         "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
-      ],
+      ]
     }
   ]
 }
 ```
 
-Replace the path and connection string with your actual values. This configuration can be used with Claude's MCP integration or other LLM platforms that support the Model Context Protocol.
+Replace the connection string with your actual values. This configuration can be used with Claude's MCP integration or other LLM platforms that support the Model Context Protocol.
+
+#### Using Environment Variables for Sensitive Information
+
+For better security, you can use environment variables for your connection string:
+
+```json
+{
+  "servers": [
+    {
+      "name": "SqlServerMcp",
+      "command": "tsql-mcp-server",
+      "args": [
+        "--env-var",
+        "SQL_CONNECTION_STRING"
+      ]
+    }
+  ]
+}
+```
 
 ## Command Line Options
 

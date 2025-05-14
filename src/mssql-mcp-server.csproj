@@ -6,17 +6,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    
+
     <!-- Global tool properties -->
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>mssql-mcp-server</ToolCommandName>
-    <PackageId>mssql-mcp-server</PackageId>
-    <Version>1.0.0</Version>
+    <ToolCommandName>tsql-mcp-server</ToolCommandName>
+    <PackageId>tsql-mcp-server</PackageId>
+    <Version>1.0.1</Version>
     <Authors>Jakob Popple</Authors>
     <Description>SQL Server MCP Server - Provides SQL Server database access via Model Context Protocol</Description>
     <PackageTags>sql;mcp;database;tool</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Popplywop/mssql-mcp-server</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,6 +26,10 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
     <PackageReference Include="ModelContextProtocol" Version="0.1.0-preview.13" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
