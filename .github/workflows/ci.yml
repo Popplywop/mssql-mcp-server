@@ -23,18 +23,20 @@ jobs:
     # Step 3: Extract the current version from the .csproj file
     - name: Get current version
       id: get_version
+      shell: pwsh
       run: |
-        CURRENT_VERSION=$(xmllint --xpath "string(//Project/PropertyGroup/Version)" *.csproj)
-        echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+        $xml = [xml](Get-Content ./src/tsql-mcp-server.csproj)
+        $version = $xml.Project.PropertyGroup.Version
+        echo "CURRENT_VERSION=$version" >> $env:GITHUB_ENV
 
     # Step 4: Check if this version is already published on NuGet.org
     - name: Check if version exists on NuGet
       id: check_version
+      shell: pwsh
       run: |
-        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/tsql-mcp-server/$CURRENT_VERSION/tsql-mcp-server.$CURRENT_VERSION.nupkg)
-        echo "VERSION_EXISTS=$RESPONSE" >> $GITHUB_ENV
-      env:
-        CURRENT_VERSION: ${{ env.CURRENT_VERSION }}
+        $response = Invoke-WebRequest -Uri "https://api.nuget.org/v3-flatcontainer/tsql-mcp-server/$env:CURRENT_VERSION/tsql-mcp-server.$env:CURRENT_VERSION.nupkg" -Method Head -ErrorAction SilentlyContinue
+        $statusCode = if ($response) { $response.StatusCode } else { 404 }
+        echo "VERSION_EXISTS=$statusCode" >> $env:GITHUB_ENV
 
     # Step 5: Stop workflow if version already exists
     - name: Stop if version exists
