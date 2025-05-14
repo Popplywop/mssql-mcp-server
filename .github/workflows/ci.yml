@@ -47,7 +47,9 @@ jobs:
     # Step 5: Stop workflow if version already exists
     - name: Stop if version exists
       if: ${{ env.VERSION_EXISTS == '200' }}
-      run: echo "Version ${{ env.CURRENT_VERSION }} already exists. Stopping the workflow."
+      run: |
+        echo "Version ${{ env.CURRENT_VERSION }} already exists. Stopping the workflow."
+        exit 1
 
     # Step 6: Restore dependencies
     - name: Restore dependencies
