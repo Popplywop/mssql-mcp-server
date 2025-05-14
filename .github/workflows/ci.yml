@@ -34,9 +34,15 @@ jobs:
       id: check_version
       shell: pwsh
       run: |
-        $response = Invoke-WebRequest -Uri "https://api.nuget.org/v3-flatcontainer/tsql-mcp-server/$env:CURRENT_VERSION/tsql-mcp-server.$env:CURRENT_VERSION.nupkg" -Method Head -ErrorAction SilentlyContinue
-        $statusCode = if ($response) { $response.StatusCode } else { 404 }
+        $url = "https://api.nuget.org/v3-flatcontainer/tsql-mcp-server/$env:CURRENT_VERSION/tsql-mcp-server.$env:CURRENT_VERSION.nupkg"
+        try {
+          $response = Invoke-WebRequest -Uri $url -Method Head -ErrorAction Stop
+          $statusCode = "200"
+        } catch {
+          $statusCode = "404"
+        }
         echo "VERSION_EXISTS=$statusCode" >> $env:GITHUB_ENV
+        Write-Host "Package version check result: $statusCode"
 
     # Step 5: Stop workflow if version already exists
     - name: Stop if version exists
