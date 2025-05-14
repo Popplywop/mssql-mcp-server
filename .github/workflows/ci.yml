@@ -66,4 +66,4 @@ jobs:
       if: ${{ env.VERSION_EXISTS != '200' }}
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-      run: dotnet nuget push ./artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $env:NUGET_API_KEY
+      run: dotnet nuget push ./artifacts/tsql-mcp-server.$env:CURRENT_VERSION.nupkg --source https://api.nuget.org/v3/index.json --api-key $env:NUGET_API_KEY
