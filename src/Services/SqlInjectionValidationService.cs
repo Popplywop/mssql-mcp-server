@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 
-namespace SqlServerMcpServer.Services
+namespace Services
 {
     public partial class SqlInjectionValidationService
     {

@@ -1,11 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SqlServerMcpServer.Services;
-using SqlServerMcpServer.Handlers;
+using Services;
+using Handlers;
 using System.CommandLine;
 
-namespace SqlServerMcpServer
+namespace tsql_mcp_server 
 {
     public class Program
     {
@@ -88,13 +88,17 @@ namespace SqlServerMcpServer
                         .AddSingleton<SqlConnectionFactory>()
                         // Register SQL injection validation service
                         .AddSingleton<SqlInjectionValidationService>()
+                        // Register DatabaseMetadataCache for lazy loading resources
+                        .AddSingleton<DatabaseMetadataCache>()
                         // Register services that depend on SqlConnectionFactory
                         .AddSingleton<QueryService>()
-                        .AddSingleton<NoOpResourceHandler>();
+                        .AddSingleton<DatabaseResourceHandler>();
+                    
+                    // Build the service provider
+                    var serviceProvider = builder.Services.BuildServiceProvider();
                     
                     // Get the handler instance from the service provider
-                    var serviceProvider = builder.Services.BuildServiceProvider();
-                    var resourceHandler = serviceProvider.GetRequiredService<NoOpResourceHandler>();
+                    var resourceHandler = serviceProvider.GetRequiredService<DatabaseResourceHandler>();
                     
                     // Configure MCP server
                     builder.Services
@@ -145,3 +149,4 @@ namespace SqlServerMcpServer
         }
     }
 }
+

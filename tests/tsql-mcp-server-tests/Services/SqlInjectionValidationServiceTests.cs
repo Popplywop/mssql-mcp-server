@@ -1,10 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Moq;
-using SqlServerMcpServer.Services;
+using Services;
 using FluentAssertions;
-using System.Text.RegularExpressions;
 
-namespace SqlServerMcpServer.Tests.Services
+namespace tsql_mcp_server_tests.Services
 {
     public class SqlInjectionValidationServiceTests
     {

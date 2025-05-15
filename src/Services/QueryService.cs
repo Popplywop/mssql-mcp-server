@@ -1,9 +1,9 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SqlServerMcpServer.Models;
+using Models;
 
-namespace SqlServerMcpServer.Services
+namespace Services
 {
     public class QueryService
     {

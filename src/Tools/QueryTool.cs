@@ -1,9 +1,9 @@
 using ModelContextProtocol.Server;
-using SqlServerMcpServer.Services;
+using Services;
 using System.ComponentModel;
 using System.Text.Json;
 
-namespace SqlServerMcpServer.Tools
+namespace Tools
 {
     [McpServerToolType]
     public class QueryTool(QueryService queryService)

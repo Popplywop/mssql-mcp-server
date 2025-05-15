@@ -2,7 +2,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 
-namespace SqlServerMcpServer.Services
+namespace Services
 {
     /// <summary>
     /// Factory for creating and managing SQL connections with proper tracking and disposal

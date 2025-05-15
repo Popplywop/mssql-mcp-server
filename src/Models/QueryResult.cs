@@ -1,4 +1,4 @@
-namespace SqlServerMcpServer.Models
+namespace Models
 {
     public class QueryResult
     {

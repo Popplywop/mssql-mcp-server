@@ -1,8 +1,8 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using SqlServerMcpServer.Models;
+using Models;
 
-namespace SqlServerMcpServer.Services
+namespace Services
 {
     public class SqlConnectionService
     {
