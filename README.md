@@ -8,6 +8,8 @@ A Model Context Protocol (MCP) server that provides tools for interacting with S
 
 - **Database Querying**: Execute SQL queries and retrieve results
 - **Schema Inspection**: List tables, views, stored procedures, and examine table schemas
+- **SQL Injection Prevention**: Built-in validation to prevent SQL injection attacks
+- **Resource Caching**: Metadata caching for improved performance
 
 ## Getting Started
 
@@ -36,8 +38,8 @@ dotnet tool update --global tsql-mcp-server
 
 ```bash
 # Clone the repository
-git clone https://github.com/Popplywop/mssql-mcp-server
-cd mssql-mcp-server
+git clone https://github.com/Popplywop/tsql-mcp-server
+cd tsql-mcp-server
 
 # Build the project
 dotnet build
@@ -97,7 +99,7 @@ To use this server with Claude or other LLMs that support the Model Context Prot
   "servers": [
     {
       "name": "SqlServerMcp",
-      "command": "path/to/mssql-mcp-server.exe",
+      "command": "path/to/tsql-mcp-server.exe",
       "args": [
         "--dsn",
         "Server=your-server;Database=your-database;User Id=your-username;Password=your-password;TrustServerCertificate=True;"
@@ -143,19 +145,21 @@ For better security, you can use environment variables for your connection strin
     - `commandTimeout`: Optional command timeout in seconds
     - `maxRows`: Optional maximum number of rows to return
 
-### Schema Tools
+### Database Resources
 
-- **ListTables**: Lists all tables in the database
+The server provides database schema information through a resource-based approach. Resources are accessed via URIs and are lazy-loaded with caching for improved performance.
 
-- **GetTableSchema**: Gets the schema of a specific table
-  - Parameters:
-    - `tableName`: The name of the table
+| Resource URI | Description | Loading Behavior |
+|--------------|-------------|------------------|
+| `sqlserver://schemas/{schema_name}` | Information about a specific schema | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/tables` | List of tables in a schema | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/views` | List of views in a schema | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/procedures` | List of stored procedures in a schema | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/tables/{table_name}` | Detailed information about a specific table | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/views/{view_name}` | Detailed information about a specific view | Loaded on first request, cached for 10 minutes |
+| `sqlserver://schemas/{schema_name}/procedures/{procedure_name}` | Detailed information about a specific procedure | Loaded on first request, cached for 10 minutes |
 
-- **ListViews**: Lists all views in the database
-
-- **ListStoredProcedures**: Lists all stored procedures in the database
-
-- **GetDatabaseInfo**: Gets information about the connected database
+Resources are automatically discovered by the MCP client and can be accessed directly without requiring specific tool calls.
 
 ## Security Considerations
 
@@ -163,6 +167,7 @@ For better security, you can use environment variables for your connection strin
 - Store connection strings securely (not in source control)
 - Consider using environment variables for connection strings
 - Enable TLS/SSL for database connections
+- SQL injection validation prevents dangerous operations and protects against common attack vectors
 
 ## Example Usage
 
@@ -173,6 +178,26 @@ ExecuteQuery:
   query: "SELECT TOP 10 * FROM MyTable"
   maxRows: 100
 ```
+
+### Accessing Database Resources
+
+Resources can be accessed directly via their URIs:
+
+```
+# List all schemas
+GET sqlserver://schemas
+
+# Get information about a specific schema
+GET sqlserver://schemas/dbo
+
+# List all tables in a schema
+GET sqlserver://schemas/dbo/tables
+
+# Get detailed information about a specific table
+GET sqlserver://schemas/dbo/tables/Customers
+```
+
+The resource-based approach provides a RESTful way to explore and interact with the database schema.
 
 ## License
 

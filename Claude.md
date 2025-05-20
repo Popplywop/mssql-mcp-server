@@ -8,6 +8,7 @@ The primary purpose of this project is to enable AI assistants to:
 - Execute SQL queries and retrieve formatted results
 - Inspect database schemas (tables, views, stored procedures)
 - Perform data manipulation operations (insert, update, delete)
+- Access database resources through a standardized URI-based interface
 
 By implementing the Model Context Protocol, this server provides a secure and controlled way for AI systems to interact with databases without requiring direct database access credentials in the AI context.
 
@@ -19,12 +20,14 @@ The SQL Server MCP Server follows a modular architecture that separates concerns
 graph TD
     Client[MCP Client] -->|MCP Protocol| Server[MCP Server]
     Server -->|Tool Registration| ToolRegistry[Tool Registry]
-    Server -->|Resource Requests| ResourceHandler[Resource Handler]
+    Server -->|Resource Requests| ResourceHandler[Database Resource Handler]
     ToolRegistry -->|Tool Execution| QueryTool[Query Tools]
     ToolRegistry -->|Tool Execution| SchemaTool[Schema Tools]
     QueryTool -->|Query Execution| QueryService[Query Service]
     SchemaTool -->|Schema Queries| QueryService
+    QueryService -->|Query Validation| ValidationService[SQL Injection Validation]
     QueryService -->|Connection Management| ConnectionService[SQL Connection Service]
+    ResourceHandler -->|Metadata Caching| MetadataCache[Database Metadata Cache]
     ConnectionService -->|Database Access| Database[(SQL Server Database)]
 ```
 
@@ -79,6 +82,23 @@ The `QueryService` handles SQL query execution and result processing. It:
 - Processes query results into structured formats
 - Handles different query types (SELECT vs. INSERT/UPDATE/DELETE)
 - Manages error handling for query execution
+- Validates queries for SQL injection prevention
+
+#### SqlInjectionValidationService
+The `SqlInjectionValidationService` provides security by validating SQL queries before execution:
+- Prevents multiple statement execution
+- Blocks comment-based SQL injection techniques
+- Restricts UNION-based attacks
+- Prevents access to dangerous system functions and variables
+- Blocks dynamic SQL execution
+- Detects and prevents other common SQL injection patterns
+
+#### DatabaseMetadataCache
+The `DatabaseMetadataCache` improves performance through caching:
+- Caches database metadata (schemas, tables, views, procedures)
+- Implements automatic expiration (default: 10 minutes)
+- Provides both synchronous and asynchronous access methods
+- Reduces database load for frequently accessed metadata
 
 ```csharp
 public class QueryService
@@ -113,18 +133,29 @@ The `QueryTool` class exposes query functionality through the MCP protocol:
 - `ExecuteQuery`: Runs a SQL query and returns formatted results
 - `ExecuteScalarQuery`: Runs a query and returns only the first value
 
-#### SchemaTools
-The `SchemaTools` class provides database schema inspection capabilities:
-- `ListTables`: Lists all tables in the database
-- `GetTableSchema`: Gets the schema of a specific table
-- `ListViews`: Lists all views in the database
-- `ListStoredProcedures`: Lists all stored procedures
-- `GetDatabaseInfo`: Returns database metadata
+#### Resource-Based Schema Access
+The server provides database schema information through a resource-based approach rather than specific tools:
+
+| Resource URI | Description |
+|--------------|-------------|
+| `sqlserver://schemas/{schema_name}` | Information about a specific schema |
+| `sqlserver://schemas/{schema_name}/tables` | List of tables in a schema |
+| `sqlserver://schemas/{schema_name}/views` | List of views in a schema |
+| `sqlserver://schemas/{schema_name}/procedures` | List of stored procedures in a schema |
+| `sqlserver://schemas/{schema_name}/tables/{table_name}` | Detailed information about a specific table |
+| `sqlserver://schemas/{schema_name}/views/{view_name}` | Detailed information about a specific view |
+| `sqlserver://schemas/{schema_name}/procedures/{procedure_name}` | Detailed information about a specific procedure |
+
+This resource-based approach provides a RESTful way to explore and interact with the database schema, with all resources being lazy-loaded and cached for improved performance.
 
 ### Handlers
 
-#### NoOpResourceHandler
-The `NoOpResourceHandler` implements resource handling for the MCP protocol. Currently, it returns empty results as the server focuses on tool-based interactions rather than resource-based ones.
+#### DatabaseResourceHandler
+The `DatabaseResourceHandler` implements resource handling for the MCP protocol:
+- Provides URI-based access to database schema information
+- Supports hierarchical resource structure (schemas/tables/views/procedures)
+- Implements lazy loading of resources for better performance
+- Integrates with the metadata cache to reduce database queries
 
 ## MCP Integration
 
@@ -152,7 +183,8 @@ The MCP integration allows the server to expose database functionality in a stan
 ### Best Practices
 - Use the principle of least privilege for database accounts
 - Enable TLS/SSL for database connections
-- Implement query parameter validation to prevent SQL injection
+- Leverage the built-in SQL injection validation
+- Use parameterized queries when extending the server
 - Limit the scope of database operations allowed
 
 ## Usage Examples
@@ -182,29 +214,56 @@ SqlServerMcpServer.exe --dsn "..." --verbose
 }
 ```
 
-#### Getting Table Schema
-```json
+#### Accessing Schema Resources
+```
+# Resource request to get schema information
+GET sqlserver://schemas/dbo
+
+# Response
 {
-  "tool": "GetTableSchema",
-  "params": {
-    "tableName": "Customers"
-  }
+  "SchemaName": "dbo",
+  "Tables": 24,
+  "Views": 8,
+  "StoredProcedures": 15
 }
 ```
 
-#### Listing Database Objects
-```json
+#### Accessing Table Information
+```
+# Resource request to get table details
+GET sqlserver://schemas/dbo/tables/Customers
+
+# Response
 {
-  "tool": "ListTables"
+  "Schema": "dbo",
+  "TableName": "Customers",
+  "Columns": [
+    {
+      "Name": "CustomerID",
+      "DataType": "int",
+      "MaxLength": null,
+      "IsNullable": "NO",
+      "DefaultValue": ""
+    },
+    {
+      "Name": "CustomerName",
+      "DataType": "nvarchar",
+      "MaxLength": 100,
+      "IsNullable": "NO",
+      "DefaultValue": ""
+    }
+  ],
+  "PrimaryKeys": ["CustomerID"],
+  "ForeignKeys": []
 }
 ```
 
 ## Future Enhancements
 
 ### Potential Improvements
-- Implement caching for schema information to improve performance
 - Add transaction support for multi-statement operations
 - Implement connection pooling for better resource management
+- Enhance SQL injection validation with customizable rules
 
 ### Additional Tools
 - Data import/export tools
