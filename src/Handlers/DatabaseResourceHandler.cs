@@ -1,7 +1,8 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
-using ModelContextProtocol.Protocol.Types;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
+using Models;
 using Services;
 using System.Text.Json;
 
@@ -58,8 +59,8 @@ namespace Handlers
                 var schemas = await _metadataCache.GetOrAddAsync(
                     "schemas",
                     () => GetSchemasAsync(cancellationToken));
-                
-                foreach (var schema in schemas)
+
+                await Parallel.ForEachAsync(schemas, async (schema, ct) =>
                 {
                     // Add schema container resource
                     resources.Add(new Resource
@@ -69,7 +70,7 @@ namespace Handlers
                         Description = $"Resources for the {schema} schema",
                         MimeType = "application/json"
                     });
-                    
+
                     // Add tables container resource (without fetching actual tables)
                     resources.Add(new Resource
                     {
@@ -78,7 +79,7 @@ namespace Handlers
                         Description = $"List of tables in the {schema} schema",
                         MimeType = "application/json"
                     });
-                    
+
                     // Add views container resource (without fetching actual views)
                     resources.Add(new Resource
                     {
@@ -87,7 +88,7 @@ namespace Handlers
                         Description = $"List of views in the {schema} schema",
                         MimeType = "application/json"
                     });
-                    
+
                     // Add procedures container resource (without fetching actual procedures)
                     resources.Add(new Resource
                     {
@@ -96,7 +97,9 @@ namespace Handlers
                         Description = $"List of stored procedures in the {schema} schema",
                         MimeType = "application/json"
                     });
-                }
+
+                    await ValueTask.CompletedTask;
+                });
             }
             catch (Exception ex)
             {
@@ -356,7 +359,7 @@ namespace Handlers
 
             return schemas;
         }
-        private async Task<object> GetSchemaInfoAsync(string schemaName, CancellationToken cancellationToken)
+        private async Task<SchemaInfo> GetSchemaInfoAsync(string schemaName, CancellationToken cancellationToken)
         {
             using var connection = _connectionFactory.CreateConnection(60);
             await connection.OpenAsync(cancellationToken);
@@ -375,22 +378,21 @@ namespace Handlers
                 () => GetStoredProceduresBySchemaAsync(schemaName, cancellationToken))).Count;
 
             // Return schema info
-            return new
+            return new SchemaInfo(schemaName)
             {
-                SchemaName = schemaName,
                 Tables = tableCount,
                 Views = viewCount,
                 StoredProcedures = procedureCount
             };
         }
 
-        private async Task<object> GetTableInfoAsync(string schemaName, string tableName, CancellationToken cancellationToken)
+        private async Task<TableInfo> GetTableInfoAsync(string schemaName, string tableName, CancellationToken cancellationToken)
         {
             using var connection = _connectionFactory.CreateConnection(60);
             await connection.OpenAsync(cancellationToken);
 
             // Get table columns
-            var columns = new List<object>();
+            var columns = new List<ColumnInfo>();
             string columnsQuery = @"
                 SELECT
                     COLUMN_NAME,
@@ -410,14 +412,13 @@ namespace Handlers
                 using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    columns.Add(new
-                    {
-                        Name = reader.GetString(0),
-                        DataType = reader.GetString(1),
-                        MaxLength = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
-                        IsNullable = reader.GetString(3),
-                        DefaultValue = reader.IsDBNull(4) ? string.Empty : reader.GetString(4)
-                    });
+                    columns.Add(new ColumnInfo(
+                        reader.GetString(0),
+                       reader.GetString(1),
+                       reader.IsDBNull(2) ? null : reader.GetInt32(2),
+                       reader.GetString(3).Equals("YES", StringComparison.OrdinalIgnoreCase),
+                       reader.IsDBNull(4) ? string.Empty : reader.GetString(4))
+                    );
                 }
             }
 
@@ -443,7 +444,7 @@ namespace Handlers
             }
 
             // Get foreign key information
-            var foreignKeys = new List<object>();
+            var foreignKeys = new List<ForeignKeyInfo>();
             string fkQuery = @"
                 SELECT
                     fk.name AS FK_NAME,
@@ -468,35 +469,32 @@ namespace Handlers
                 using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    foreignKeys.Add(new
-                    {
-                        Name = reader.GetString(0),
-                        ColumnName = reader.GetString(1),
-                        ReferencedSchema = reader.GetString(2),
-                        ReferencedTable = reader.GetString(3),
-                        ReferencedColumn = reader.GetString(4)
-                    });
+                    foreignKeys.Add(new ForeignKeyInfo(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.GetString(3),
+                        reader.GetString(4))
+                    );
                 }
             }
 
             // Return table info
-            return new
+            return new TableInfo(schemaName, tableName)
             {
-                Schema = schemaName,
-                TableName = tableName,
                 Columns = columns,
                 PrimaryKeys = primaryKeys,
                 ForeignKeys = foreignKeys
             };
         }
 
-        private async Task<object> GetViewInfoAsync(string schemaName, string viewName, CancellationToken cancellationToken)
+        private async Task<ViewInfo> GetViewInfoAsync(string schemaName, string viewName, CancellationToken cancellationToken)
         {
             using var connection = _connectionFactory.CreateConnection(60);
             await connection.OpenAsync(cancellationToken);
 
             // Get view columns
-            var columns = new List<object>();
+            var columns = new List<ColumnInfo>();
             string columnsQuery = @"
                 SELECT
                     COLUMN_NAME,
@@ -515,13 +513,13 @@ namespace Handlers
                 using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    columns.Add(new
-                    {
-                        Name = reader.GetString(0),
-                        DataType = reader.GetString(1),
-                        MaxLength = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
-                        IsNullable = reader.GetString(3)
-                    });
+                    columns.Add(new ColumnInfo(
+                        reader.GetString(0),
+                        reader.GetString(1),
+                        reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2),
+                        reader.GetString(3).Equals("YES", StringComparison.OrdinalIgnoreCase),
+                        string.Empty // Views don't have default values
+                    ));
                 }
             }
 
@@ -545,22 +543,20 @@ namespace Handlers
             }
 
             // Return view info
-            return new
+            return new ViewInfo(schemaName, viewName)
             {
-                Schema = schemaName,
-                ViewName = viewName,
                 Columns = columns,
                 Definition = definition
             };
         }
 
-        private async Task<object> GetProcedureInfoAsync(string schemaName, string procedureName, CancellationToken cancellationToken)
+        private async Task<ProcedureInfo> GetProcedureInfoAsync(string schemaName, string procedureName, CancellationToken cancellationToken)
         {
             using var connection = _connectionFactory.CreateConnection(60);
             await connection.OpenAsync(cancellationToken);
 
             // Get procedure parameters
-            var parameters = new List<object>();
+            var parameters = new List<ParameterInfo>();
             string paramsQuery = @"
                 SELECT
                     PARAMETER_NAME,
@@ -580,14 +576,13 @@ namespace Handlers
                 using var reader = await command.ExecuteReaderAsync(cancellationToken);
                 while (await reader.ReadAsync(cancellationToken))
                 {
-                    parameters.Add(new
-                    {
-                        Name = reader.IsDBNull(0) ? null : reader.GetString(0),
-                        Mode = reader.GetString(1),
-                        DataType = reader.GetString(2),
-                        MaxLength = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
-                        DefaultValue = reader.IsDBNull(4) ? string.Empty : reader.GetString(4)
-                    });
+                    parameters.Add(new ParameterInfo(
+                        reader.IsDBNull(0) ? null : reader.GetString(0),
+                        reader.GetString(1),
+                        reader.GetString(2),
+                        reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
+                        reader.IsDBNull(4) ? string.Empty : reader.GetString(4)
+                    ));
                 }
             }
 
@@ -612,10 +607,8 @@ namespace Handlers
             }
 
             // Return procedure info
-            return new
+            return new ProcedureInfo(schemaName, procedureName)
             {
-                Schema = schemaName,
-                ProcedureName = procedureName,
                 Parameters = parameters,
                 Definition = definition
             };

@@ -45,7 +45,7 @@ namespace Services
         /// </summary>
         /// <param name="query">The SQL query to validate</param>
         /// <returns>A tuple containing (isValid, errorMessage)</returns>
-        public (bool isValid, string errorMessage) ValidateQuery(string query)
+        public (bool isValid, string errorMessage) ValidateQuery(string? query)
         {
             if (string.IsNullOrWhiteSpace(query))
             {

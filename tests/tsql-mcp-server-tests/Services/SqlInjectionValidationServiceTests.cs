@@ -49,7 +49,7 @@ namespace tsql_mcp_server_tests.Services
         [InlineData("")]
         [InlineData(" ")]
         [InlineData(null)]
-        public void ValidateQuery_WithEmptyQuery_ReturnsInvalid(string query)
+        public void ValidateQuery_WithEmptyQuery_ReturnsInvalid(string? query)
         {
             // Act
             var result = _service.ValidateQuery(query);
